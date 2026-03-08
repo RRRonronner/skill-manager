@@ -18,6 +18,7 @@ interface SkillFormData {
 
 interface ElectronAPI {
   getSkills: () => Promise<Skill[]>;
+  getSkillContent: (id: string) => Promise<string | null>;
   createSkill: (data: SkillFormData) => Promise<Skill>;
   updateSkill: (id: string, data: Partial<SkillFormData>) => Promise<Skill | null>;
   deleteSkill: (id: string) => Promise<boolean>;

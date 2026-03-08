@@ -42,7 +42,12 @@ const elements = {
   btnAdd: document.getElementById('btn-add') as HTMLButtonElement,
   btnRefresh: document.getElementById('btn-refresh') as HTMLButtonElement,
   modalClose: document.getElementById('modal-close') as HTMLButtonElement,
-  btnCancel: document.getElementById('btn-cancel') as HTMLButtonElement
+  btnCancel: document.getElementById('btn-cancel') as HTMLButtonElement,
+  // 详情弹窗
+  detailModal: document.getElementById('detail-modal') as HTMLDivElement,
+  detailTitle: document.getElementById('detail-title') as HTMLHeadingElement,
+  detailContent: document.getElementById('detail-content') as HTMLDivElement,
+  detailClose: document.getElementById('detail-close') as HTMLButtonElement
 };
 
 // 初始化
@@ -97,6 +102,14 @@ function bindEvents(): void {
 
   // 表单提交
   elements.skillForm.addEventListener('submit', handleFormSubmit);
+
+  // 详情弹窗关闭
+  elements.detailClose.addEventListener('click', closeDetailModal);
+  elements.detailModal.addEventListener('click', (e) => {
+    if (e.target === elements.detailModal) {
+      closeDetailModal();
+    }
+  });
 }
 
 // 设置过滤器
@@ -162,12 +175,11 @@ function createSkillCard(skill: Skill): string {
         <div class="skill-tags">${tagsHtml}</div>
       </div>
       <div class="skill-actions">
+        <button class="view-btn" data-view="${skill.id}" title="查看详情">查看</button>
         <label class="toggle-switch">
           <input type="checkbox" ${skill.enabled ? 'checked' : ''} data-toggle="${skill.id}">
           <span class="toggle-slider"></span>
         </label>
-        <button class="icon-btn edit" data-edit="${skill.id}" title="编辑">✏️</button>
-        <button class="icon-btn delete" data-delete="${skill.id}" title="删除">🗑️</button>
       </div>
     </div>
   `;
@@ -185,22 +197,13 @@ function bindCardEvents(): void {
     });
   });
 
-  // 编辑按钮
-  document.querySelectorAll('[data-edit]').forEach(btn => {
+  // 查看详情（点击 skill-info 部分）
+  document.querySelectorAll('[data-view]').forEach(btn => {
     btn.addEventListener('click', (e) => {
-      const id = (e.target as HTMLElement).getAttribute('data-edit');
-      if (id) {
-        openModal(id);
-      }
-    });
-  });
-
-  // 删除按钮
-  document.querySelectorAll('[data-delete]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      const id = (e.target as HTMLElement).getAttribute('data-delete');
-      if (id && confirm('确定要删除这个 Skill 吗？')) {
-        await deleteSkill(id);
+      const id = (e.target as HTMLElement).getAttribute('data-view');
+      const skill = allSkills.find(s => s.id === id);
+      if (id && skill) {
+        openDetailModal(id, skill.name);
       }
     });
   });
@@ -255,6 +258,30 @@ function openModal(editId?: string): void {
 function closeModal(): void {
   elements.modal.classList.add('hidden');
   editingSkillId = null;
+}
+
+// 打开详情弹窗
+async function openDetailModal(skillId: string, skillName: string): Promise<void> {
+  elements.detailTitle.textContent = skillName;
+  elements.detailContent.textContent = '加载中...';
+  elements.detailModal.classList.remove('hidden');
+
+  try {
+    const content = await window.electronAPI.getSkillContent(skillId);
+    if (content) {
+      elements.detailContent.textContent = content;
+    } else {
+      elements.detailContent.textContent = '无法加载内容';
+    }
+  } catch (error) {
+    console.error('加载详情失败:', error);
+    elements.detailContent.textContent = '加载失败';
+  }
+}
+
+// 关闭详情弹窗
+function closeDetailModal(): void {
+  elements.detailModal.classList.add('hidden');
 }
 
 // 处理表单提交

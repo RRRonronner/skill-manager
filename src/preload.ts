@@ -8,6 +8,11 @@ const electronAPI = {
     return ipcRenderer.invoke('skill:getAll');
   },
 
+  // 获取 skill 详情内容
+  getSkillContent: (id: string): Promise<string | null> => {
+    return ipcRenderer.invoke('skill:getContent', id);
+  },
+
   // 创建 skill
   createSkill: (data: SkillFormData): Promise<Skill> => {
     return ipcRenderer.invoke('skill:create', data);

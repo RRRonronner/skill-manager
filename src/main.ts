@@ -3,34 +3,116 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { Skill, SkillFormData } from './types';
 
-// 存储路径
+// Claude Code skills 目录
+const claudeSkillsPath = 'C:/Users/admin/.claude/skills';
+
+// 存储路径（用于保存用户自定义配置）
 const userDataPath = app.getPath('userData');
-const dataFilePath = path.join(userDataPath, 'skills.json');
+const configFilePath = path.join(userDataPath, 'skill-config.json');
 
 // 窗口引用
 let mainWindow: BrowserWindow | null = null;
 
-// 初始化/读取数据
-function loadSkills(): Skill[] {
+// 解析 SKILL.md 文件获取 name 和 description
+function parseSkillFile(skillPath: string): { name: string; description: string } | null {
+  const skillMdPath = path.join(skillPath, 'SKILL.md');
+  if (!fs.existsSync(skillMdPath)) {
+    return null;
+  }
+
   try {
-    if (fs.existsSync(dataFilePath)) {
-      const data = fs.readFileSync(dataFilePath, 'utf-8');
+    const content = fs.readFileSync(skillMdPath, 'utf-8');
+    // 解析 YAML front matter
+    const match = content.match(/^---\n([\s\S]*?)\n---/);
+    if (match) {
+      const yaml = match[1];
+      const nameMatch = yaml.match(/name:\s*(.+)/);
+      const descMatch = yaml.match(/description:\s*(.+)/);
+      if (nameMatch) {
+        return {
+          name: nameMatch[1].trim(),
+          description: descMatch ? descMatch[1].trim() : ''
+        };
+      }
+    }
+    // 如果没有 YAML，使用目录名
+    return {
+      name: path.basename(skillPath),
+      description: ''
+    };
+  } catch (error) {
+    console.error(`解析 skill 文件失败: ${skillPath}`, error);
+    return null;
+  }
+}
+
+// 从 Claude Code skills 目录加载
+function loadSkillsFromClaudeDir(): Skill[] {
+  const skills: Skill[] = [];
+
+  try {
+    if (!fs.existsSync(claudeSkillsPath)) {
+      console.log('Skills 目录不存在:', claudeSkillsPath);
+      return getDefaultSkills();
+    }
+
+    const entries = fs.readdirSync(claudeSkillsPath);
+    const userConfig = loadUserConfig();
+
+    for (const entry of entries) {
+      const skillPath = path.join(claudeSkillsPath, entry);
+      const stat = fs.statSync(skillPath);
+
+      // 只处理目录
+      if (!stat.isDirectory()) continue;
+
+      const parsed = parseSkillFile(skillPath);
+      if (parsed) {
+        skills.push({
+          id: entry, // 使用目录名作为 ID
+          name: parsed.name,
+          description: parsed.description,
+          enabled: userConfig[entry]?.enabled ?? true, // 从用户配置读取启用状态
+          tags: [], // 可以后续添加自动标签
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      }
+    }
+
+    console.log(`加载了 ${skills.length} 个 skills`);
+    return skills;
+  } catch (error) {
+    console.error('加载 skills 失败:', error);
+    return getDefaultSkills();
+  }
+}
+
+// 加载用户配置
+function loadUserConfig(): Record<string, { enabled: boolean }> {
+  try {
+    if (fs.existsSync(configFilePath)) {
+      const data = fs.readFileSync(configFilePath, 'utf-8');
       return JSON.parse(data);
     }
   } catch (error) {
-    console.error('加载技能数据失败:', error);
+    console.error('加载用户配置失败:', error);
   }
-  // 返回示例数据
-  return getDefaultSkills();
+  return {};
 }
 
-// 保存数据
-function saveSkills(skills: Skill[]): void {
+// 保存用户配置
+function saveUserConfig(config: Record<string, { enabled: boolean }>): void {
   try {
-    fs.writeFileSync(dataFilePath, JSON.stringify(skills, null, 2), 'utf-8');
+    fs.writeFileSync(configFilePath, JSON.stringify(config, null, 2), 'utf-8');
   } catch (error) {
-    console.error('保存技能数据失败:', error);
+    console.error('保存用户配置失败:', error);
   }
+}
+
+// 初始化/读取数据
+function loadSkills(): Skill[] {
+  return loadSkillsFromClaudeDir();
 }
 
 // 默认技能列表
@@ -103,43 +185,35 @@ function registerIpcHandlers(): void {
     return loadSkills();
   });
 
-  // 创建 skill
-  ipcMain.handle('skill:create', (_event, data: SkillFormData) => {
-    const skills = loadSkills();
-    const newSkill: Skill = {
-      id: Date.now().toString(),
-      name: data.name,
-      description: data.description,
-      tags: data.tags,
-      enabled: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    skills.push(newSkill);
-    saveSkills(skills);
-    return newSkill;
-  });
-
-  // 更新 skill
-  ipcMain.handle('skill:update', (_event, id: string, data: Partial<SkillFormData>) => {
-    const skills = loadSkills();
-    const index = skills.findIndex(s => s.id === id);
-    if (index !== -1) {
-      skills[index] = { ...skills[index], ...data, updatedAt: new Date().toISOString() };
-      saveSkills(skills);
-      return skills[index];
+  // 获取 skill 详情（读取 SKILL.md 完整内容）
+  ipcMain.handle('skill:getContent', (_event, id: string) => {
+    const skillPath = path.join(claudeSkillsPath, id, 'SKILL.md');
+    try {
+      if (fs.existsSync(skillPath)) {
+        const content = fs.readFileSync(skillPath, 'utf-8');
+        return content;
+      }
+    } catch (error) {
+      console.error('读取 skill 内容失败:', error);
     }
     return null;
   });
 
-  // 删除 skill
-  ipcMain.handle('skill:delete', (_event, id: string) => {
-    const skills = loadSkills();
-    const filtered = skills.filter(s => s.id !== id);
-    if (filtered.length !== skills.length) {
-      saveSkills(filtered);
-      return true;
-    }
+  // 创建 skill（只读模式，返回提示）
+  ipcMain.handle('skill:create', (_event, _data: SkillFormData) => {
+    console.log('创建 skill 功能在只读模式下不可用');
+    return null;
+  });
+
+  // 更新 skill（只读模式，返回提示）
+  ipcMain.handle('skill:update', (_event, _id: string, _data: Partial<SkillFormData>) => {
+    console.log('更新 skill 功能在只读模式下不可用');
+    return null;
+  });
+
+  // 删除 skill（只读模式，返回提示）
+  ipcMain.handle('skill:delete', (_event, _id: string) => {
+    console.log('删除 skill 功能在只读模式下不可用');
     return false;
   });
 
@@ -150,7 +224,12 @@ function registerIpcHandlers(): void {
     if (skill) {
       skill.enabled = !skill.enabled;
       skill.updatedAt = new Date().toISOString();
-      saveSkills(skills);
+
+      // 保存到用户配置
+      const config = loadUserConfig();
+      config[id] = { enabled: skill.enabled };
+      saveUserConfig(config);
+
       return skill;
     }
     return null;
