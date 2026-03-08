@@ -3,7 +3,16 @@
     "allow": [
       "Bash(npm install:*)",
       "Bash(npm run:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(gh repo:*)",
+      "Bash(winget install:*)",
+      "Bash(export:*)",
+      "Bash(where gh:*)",
+      "Bash(ping:*)",
+      "Bash(curl:*)",
+      "Bash(echo:*)",
+      "Bash(cmd:*)",
+      "Bash(npx electron:*)"
     ]
   }
 }

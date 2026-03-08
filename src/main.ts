@@ -22,24 +22,15 @@ function parseSkillFile(skillPath: string): { name: string; description: string 
 
   try {
     const content = fs.readFileSync(skillMdPath, 'utf-8');
-    // 解析 YAML front matter
-    const match = content.match(/^---\n([\s\S]*?)\n---/);
-    if (match) {
-      const yaml = match[1];
-      const nameMatch = yaml.match(/name:\s*(.+)/);
-      const descMatch = yaml.match(/description:\s*(.+)/);
-      if (nameMatch) {
-        return {
-          name: nameMatch[1].trim(),
-          description: descMatch ? descMatch[1].trim() : ''
-        };
-      }
-    }
-    // 如果没有 YAML，使用目录名
-    return {
-      name: path.basename(skillPath),
-      description: ''
-    };
+    // 查找 name
+    const nameMatch = content.match(/^name:\s*(.+)$/m);
+    // 查找 description
+    const descMatch = content.match(/^description:\s*(.+)$/m);
+
+    const name = nameMatch ? nameMatch[1].trim() : path.basename(skillPath);
+    const description = descMatch ? descMatch[1].trim() : '';
+
+    return { name, description };
   } catch (error) {
     console.error(`解析 skill 文件失败: ${skillPath}`, error);
     return null;
