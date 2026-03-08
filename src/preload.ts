@@ -1,6 +1,17 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { Skill, SkillFormData } from './types';
 
+// Shop Skill 类型
+interface ShopSkill {
+  id: string;
+  name: string;
+  description: string;
+  source: 'official' | 'github';
+  url?: string;
+  author?: string;
+  stars?: number;
+}
+
 // 暴露给渲染进程的 API
 const electronAPI = {
   // 获取所有 skills
@@ -36,6 +47,23 @@ const electronAPI = {
   // 获取应用路径
   getAppPath: (name: string): Promise<string> => {
     return ipcRenderer.invoke('app:getPath', name);
+  },
+
+  // ===== 商店相关 API =====
+
+  // 获取官方推荐 Skills
+  getOfficialSkills: (): Promise<ShopSkill[]> => {
+    return ipcRenderer.invoke('shop:getOfficialSkills');
+  },
+
+  // 搜索 GitHub 仓库
+  searchGithub: (query: string): Promise<ShopSkill[]> => {
+    return ipcRenderer.invoke('shop:searchGithub', query);
+  },
+
+  // 下载 Skill 到本地
+  downloadSkill: (skill: ShopSkill): Promise<{ success: boolean; message: string }> => {
+    return ipcRenderer.invoke('shop:downloadSkill', skill);
   }
 };
 

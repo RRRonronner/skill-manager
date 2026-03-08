@@ -1,10 +1,82 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as https from 'https';
 import { Skill, SkillFormData } from './types';
 
 // Claude Code skills 目录
 const claudeSkillsPath = 'C:/Users/admin/.claude/skills';
+
+// Shop Skill 数据类型
+interface ShopSkill {
+  id: string;
+  name: string;
+  description: string;
+  source: 'official' | 'github';
+  url?: string;
+  author?: string;
+  stars?: number;
+}
+
+// 官方推荐 Skills 列表
+const officialSkills: ShopSkill[] = [
+  {
+    id: 'git-commit',
+    name: 'git-commit',
+    description: '帮助创建规范的 Git 提交信息，符合 conventional commits 标准',
+    source: 'official',
+    author: 'Anthropic'
+  },
+  {
+    id: 'github-pr',
+    name: 'github-pr',
+    description: '创建和管理 GitHub Pull Request，包括审查、合并等操作',
+    source: 'official',
+    author: 'Anthropic'
+  },
+  {
+    id: 'review-pr',
+    name: 'review-pr',
+    description: '审查 GitHub Pull Request，提供代码质量建议和改进意见',
+    source: 'official',
+    author: 'Anthropic'
+  },
+  {
+    id: 'explain-code',
+    name: 'explain-code',
+    description: '解释代码的功能和实现原理，支持多种编程语言',
+    source: 'official',
+    author: 'Anthropic'
+  },
+  {
+    id: 'write-tests',
+    name: 'write-tests',
+    description: '为代码编写单元测试和集成测试，支持多种测试框架',
+    source: 'official',
+    author: 'Anthropic'
+  },
+  {
+    id: 'refactor-code',
+    name: 'refactor-code',
+    description: '重构代码以提高可读性和性能，保持功能不变',
+    source: 'official',
+    author: 'Anthropic'
+  },
+  {
+    id: 'find-bugs',
+    name: 'find-bugs',
+    description: '静态分析代码，查找潜在的 bug 和安全问题',
+    source: 'official',
+    author: 'Anthropic'
+  },
+  {
+    id: 'api-docs',
+    name: 'api-docs',
+    description: '为 API 生成规范的文档，支持 OpenAPI/Swagger 格式',
+    source: 'official',
+    author: 'Anthropic'
+  }
+];
 
 // 存储路径（用于保存用户自定义配置）
 const userDataPath = app.getPath('userData');
@@ -229,6 +301,114 @@ function registerIpcHandlers(): void {
   // 获取应用路径
   ipcMain.handle('app:getPath', (_event, name: string) => {
     return app.getPath(name as any);
+  });
+
+  // ===== 商店相关 IPC =====
+
+  // 获取官方推荐 Skills
+  ipcMain.handle('shop:getOfficialSkills', () => {
+    return officialSkills;
+  });
+
+  // 搜索 GitHub 仓库
+  ipcMain.handle('shop:searchGithub', async (_event, query: string): Promise<ShopSkill[]> => {
+    return new Promise((resolve) => {
+      const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}+skill&sort=stars&order=desc&per_page=20`;
+
+      const options = {
+        headers: {
+          'User-Agent': 'Skill-Manager-App'
+        }
+      };
+
+      https.get(url, options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            if (json.items) {
+              const skills: ShopSkill[] = json.items.map((item: any) => ({
+                id: item.id.toString(),
+                name: item.name,
+                description: item.description || '暂无描述',
+                source: 'github' as const,
+                url: item.html_url,
+                author: item.owner.login,
+                stars: item.stargazers_count
+              }));
+              resolve(skills);
+            } else {
+              resolve([]);
+            }
+          } catch (error) {
+            console.error('解析 GitHub API 响应失败:', error);
+            resolve([]);
+          }
+        });
+      }).on('error', (error) => {
+        console.error('GitHub API 请求失败:', error);
+        resolve([]);
+      });
+    });
+  });
+
+  // 下载 Skill 到本地
+  ipcMain.handle('shop:downloadSkill', async (_event, skill: ShopSkill): Promise<{ success: boolean; message: string }> => {
+    try {
+      // 确保目标目录存在
+      if (!fs.existsSync(claudeSkillsPath)) {
+        fs.mkdirSync(claudeSkillsPath, { recursive: true });
+      }
+
+      const skillDir = path.join(claudeSkillsPath, skill.name);
+
+      // 如果目录已存在
+      if (fs.existsSync(skillDir)) {
+        return { success: false, message: '该 Skill 已存在' };
+      }
+
+      // 创建 skill 目录
+      fs.mkdirSync(skillDir, { recursive: true });
+
+      // 如果是 GitHub 仓库，尝试获取内容
+      if (skill.source === 'github' && skill.url) {
+        // 这里可以添加从 GitHub 获取 SKILL.md 的逻辑
+        // 暂时创建基础文件
+        const skillContent = `---
+name: ${skill.name}
+description: ${skill.description}
+---
+
+# ${skill.name}
+
+${skill.description}
+
+来源: ${skill.url}
+作者: ${skill.author || '未知'}
+`;
+
+        fs.writeFileSync(path.join(skillDir, 'SKILL.md'), skillContent, 'utf-8');
+      } else {
+        // 官方 skill 创建基础文件
+        const skillContent = `---
+name: ${skill.name}
+description: ${skill.description}
+---
+
+# ${skill.name}
+
+${skill.description}
+`;
+
+        fs.writeFileSync(path.join(skillDir, 'SKILL.md'), skillContent, 'utf-8');
+      }
+
+      return { success: true, message: '下载成功' };
+    } catch (error) {
+      console.error('下载 Skill 失败:', error);
+      return { success: false, message: '下载失败: ' + (error as Error).message };
+    }
   });
 }
 

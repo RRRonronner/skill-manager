@@ -16,6 +16,16 @@ interface SkillFormData {
   tags: string[];
 }
 
+interface ShopSkill {
+  id: string;
+  name: string;
+  description: string;
+  source: 'official' | 'github';
+  url?: string;
+  author?: string;
+  stars?: number;
+}
+
 interface ElectronAPI {
   getSkills: () => Promise<Skill[]>;
   getSkillContent: (id: string) => Promise<string | null>;
@@ -24,6 +34,10 @@ interface ElectronAPI {
   deleteSkill: (id: string) => Promise<boolean>;
   toggleSkill: (id: string) => Promise<Skill | null>;
   getAppPath: (name: string) => Promise<string>;
+  // 商店相关 API
+  getOfficialSkills: () => Promise<ShopSkill[]>;
+  searchGithub: (query: string) => Promise<ShopSkill[]>;
+  downloadSkill: (skill: ShopSkill) => Promise<{ success: boolean; message: string }>;
 }
 
 declare global {

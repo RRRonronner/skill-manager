@@ -18,6 +18,7 @@
         <button id="btn-all" class="nav-btn active">全部 Skills</button>
         <button id="btn-enabled" class="nav-btn">已启用</button>
         <button id="btn-disabled" class="nav-btn">已禁用</button>
+        <button id="btn-shop" class="nav-btn">商店</button>
       </nav>
       <div class="sidebar-footer">
         <button id="btn-refresh" class="action-btn">刷新数据</button>
@@ -44,6 +45,37 @@
         <p>暂无 Skills，点击上方按钮创建</p>
       </div>
     </main>
+
+    <!-- 商店页面 -->
+    <div id="shop-page" class="shop-page hidden">
+      <!-- 商店工具栏 -->
+      <header class="toolbar">
+        <div class="shop-tabs">
+          <button id="tab-official" class="shop-tab active">官方推荐</button>
+          <button id="tab-github" class="shop-tab">GitHub 搜索</button>
+        </div>
+      </header>
+
+      <!-- 官方推荐区域 -->
+      <div id="official-section" class="shop-section">
+        <div id="official-list" class="shop-list">
+          <!-- 官方 Skills 将通过 JS 动态插入 -->
+        </div>
+      </div>
+
+      <!-- GitHub 搜索区域 -->
+      <div id="github-section" class="shop-section hidden">
+        <div class="github-search-box">
+          <input type="text" id="github-search-input" placeholder="搜索 GitHub 仓库...">
+          <button id="github-search-btn" class="primary-btn">搜索</button>
+        </div>
+        <div id="github-list" class="shop-list">
+          <!-- 搜索结果将通过 JS 动态插入 -->
+        </div>
+        <div id="github-loading" class="shop-loading hidden">搜索中...</div>
+        <div id="github-empty" class="shop-empty hidden">未找到相关仓库</div>
+      </div>
+    </div>
   </div>
 
   <!-- 创建/编辑弹窗 -->

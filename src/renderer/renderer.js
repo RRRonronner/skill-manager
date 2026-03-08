@@ -6,10 +6,15 @@ let allSkills = [];
 let currentFilter = 'all';
 let currentSearch = '';
 let editingSkillId = null;
+let currentView = 'list';
+let currentShopTab = 'official';
+let officialSkills = [];
+let githubSearchResults = [];
 // DOM 元素引用
 const elements = {
     skillsList: document.getElementById('skills-list'),
     emptyState: document.getElementById('empty-state'),
+    toolbar: document.querySelector('.toolbar'),
     searchInput: document.getElementById('search-input'),
     modal: document.getElementById('modal'),
     modalTitle: document.getElementById('modal-title'),
@@ -29,14 +34,39 @@ const elements = {
     detailModal: document.getElementById('detail-modal'),
     detailTitle: document.getElementById('detail-title'),
     detailContent: document.getElementById('detail-content'),
-    detailClose: document.getElementById('detail-close')
+    detailClose: document.getElementById('detail-close'),
+    // 商店页面
+    shopPage: document.getElementById('shop-page'),
+    btnShop: document.getElementById('btn-shop'),
+    tabOfficial: document.getElementById('tab-official'),
+    tabGithub: document.getElementById('tab-github'),
+    officialSection: document.getElementById('official-section'),
+    githubSection: document.getElementById('github-section'),
+    officialList: document.getElementById('official-list'),
+    githubList: document.getElementById('github-list'),
+    githubSearchInput: document.getElementById('github-search-input'),
+    githubSearchBtn: document.getElementById('github-search-btn'),
+    githubLoading: document.getElementById('github-loading'),
+    githubEmpty: document.getElementById('github-empty')
 };
 // 初始化
 async function init() {
     console.log('初始化应用...');
     await loadSkills();
+    await loadOfficialSkills();
     bindEvents();
     render();
+}
+// 加载官方推荐 Skills
+async function loadOfficialSkills() {
+    try {
+        officialSkills = await window.electronAPI.getOfficialSkills();
+        console.log(`加载了 ${officialSkills.length} 个官方 skills`);
+        renderOfficialSkills();
+    }
+    catch (error) {
+        console.error('加载官方 skills 失败:', error);
+    }
 }
 // 加载 Skills
 async function loadSkills() {
@@ -82,6 +112,23 @@ function bindEvents() {
     elements.detailModal.addEventListener('click', (e) => {
         if (e.target === elements.detailModal) {
             closeDetailModal();
+        }
+    });
+    // ===== 商店相关事件 =====
+    // 切换到商店页面
+    elements.btnShop.addEventListener('click', () => switchView('shop'));
+    // 切换回列表页面
+    elements.btnAll.addEventListener('click', () => switchView('list'));
+    elements.btnEnabled.addEventListener('click', () => switchView('list'));
+    elements.btnDisabled.addEventListener('click', () => switchView('list'));
+    // 商店标签切换
+    elements.tabOfficial.addEventListener('click', () => setShopTab('official'));
+    elements.tabGithub.addEventListener('click', () => setShopTab('github'));
+    // GitHub 搜索
+    elements.githubSearchBtn.addEventListener('click', handleGithubSearch);
+    elements.githubSearchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            handleGithubSearch();
         }
     });
 }
@@ -270,6 +317,123 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+// ===== 商店相关函数 =====
+// 切换视图
+function switchView(view) {
+    currentView = view;
+    if (view === 'shop') {
+        elements.shopPage.classList.remove('hidden');
+        elements.skillsList.classList.add('hidden');
+        elements.emptyState.classList.add('hidden');
+        elements.toolbar.classList.add('hidden');
+        elements.btnShop.classList.add('active');
+    }
+    else {
+        elements.shopPage.classList.add('hidden');
+        elements.skillsList.classList.remove('hidden');
+        elements.toolbar.classList.remove('hidden');
+        elements.btnShop.classList.remove('active');
+        render();
+    }
+}
+// 设置商店标签
+function setShopTab(tab) {
+    currentShopTab = tab;
+    elements.tabOfficial.classList.toggle('active', tab === 'official');
+    elements.tabGithub.classList.toggle('active', tab === 'github');
+    if (tab === 'official') {
+        elements.officialSection.classList.remove('hidden');
+        elements.githubSection.classList.add('hidden');
+    }
+    else {
+        elements.officialSection.classList.add('hidden');
+        elements.githubSection.classList.remove('hidden');
+    }
+}
+// 渲染官方推荐 Skills
+function renderOfficialSkills() {
+    elements.officialList.innerHTML = officialSkills.map(skill => createShopSkillCard(skill)).join('');
+    bindShopCardEvents();
+}
+// 创建商店 Skill 卡片 HTML
+function createShopSkillCard(skill) {
+    const starsHtml = skill.stars ? `<span class="skill-stars">★ ${skill.stars}</span>` : '';
+    const authorHtml = skill.author ? `<span class="skill-author">by ${escapeHtml(skill.author)}</span>` : '';
+    return `
+    <div class="shop-skill-card" data-id="${skill.id}">
+      <div class="shop-skill-info">
+        <div class="shop-skill-name">${escapeHtml(skill.name)}</div>
+        <div class="shop-skill-description">${escapeHtml(skill.description)}</div>
+        <div class="shop-skill-meta">${authorHtml}${starsHtml}</div>
+      </div>
+      <div class="shop-skill-actions">
+        <button class="download-btn" data-download='${JSON.stringify(skill).replace(/'/g, "&#39;")}'>下载</button>
+      </div>
+    </div>
+  `;
+}
+// 绑定商店卡片事件
+function bindShopCardEvents() {
+    document.querySelectorAll('[data-download]').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const data = e.target.getAttribute('data-download');
+            if (data) {
+                try {
+                    const skill = JSON.parse(data.replace(/&#39;/g, "'"));
+                    await downloadSkill(skill);
+                }
+                catch (error) {
+                    console.error('解析 skill 数据失败:', error);
+                }
+            }
+        });
+    });
+}
+// 下载 Skill
+async function downloadSkill(skill) {
+    try {
+        const result = await window.electronAPI.downloadSkill(skill);
+        if (result.success) {
+            alert(`"${skill.name}" 下载成功！`);
+            // 刷新列表
+            await loadSkills();
+        }
+        else {
+            alert(result.message);
+        }
+    }
+    catch (error) {
+        console.error('下载失败:', error);
+        alert('下载失败，请重试');
+    }
+}
+// 处理 GitHub 搜索
+async function handleGithubSearch() {
+    const query = elements.githubSearchInput.value.trim();
+    if (!query) {
+        return;
+    }
+    elements.githubLoading.classList.remove('hidden');
+    elements.githubList.classList.add('hidden');
+    elements.githubEmpty.classList.add('hidden');
+    try {
+        githubSearchResults = await window.electronAPI.searchGithub(query);
+        elements.githubLoading.classList.add('hidden');
+        if (githubSearchResults.length > 0) {
+            elements.githubList.innerHTML = githubSearchResults.map(skill => createShopSkillCard(skill)).join('');
+            elements.githubList.classList.remove('hidden');
+            bindShopCardEvents();
+        }
+        else {
+            elements.githubEmpty.classList.remove('hidden');
+        }
+    }
+    catch (error) {
+        console.error('搜索失败:', error);
+        elements.githubLoading.classList.add('hidden');
+        elements.githubEmpty.classList.remove('hidden');
+    }
 }
 // 启动
 document.addEventListener('DOMContentLoaded', init);

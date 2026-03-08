@@ -416,3 +416,134 @@ body {
 .view-btn:hover {
   background: #2980b9;
 }
+
+/* ===== 商店页面 ===== */
+.shop-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.shop-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.shop-tab {
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid #ddd;
+  color: #666;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.shop-tab:hover {
+  background: #ecf0f1;
+}
+
+.shop-tab.active {
+  background: #3498db;
+  border-color: #3498db;
+  color: #fff;
+}
+
+.shop-section {
+  flex: 1;
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.github-search-box {
+  display: flex;
+  gap: 12px;
+  padding: 0 24px 20px;
+}
+
+.github-search-box input {
+  flex: 1;
+  padding: 10px 16px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.github-search-box input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.shop-list {
+  padding: 0 24px;
+}
+
+.shop-skill-card {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: box-shadow 0.2s;
+}
+
+.shop-skill-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.shop-skill-info {
+  flex: 1;
+}
+
+.shop-skill-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.shop-skill-description {
+  font-size: 13px;
+  color: #7f8c8d;
+  margin-bottom: 8px;
+}
+
+.shop-skill-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: #95a5a6;
+}
+
+.shop-skill-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.download-btn {
+  padding: 8px 16px;
+  background: #27ae60;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.2s;
+}
+
+.download-btn:hover {
+  background: #219a52;
+}
+
+.shop-loading,
+.shop-empty {
+  text-align: center;
+  padding: 40px;
+  color: #95a5a6;
+}
