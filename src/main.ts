@@ -18,65 +18,49 @@ interface ShopSkill {
   stars?: number;
 }
 
-// 官方推荐 Skills 列表
-const officialSkills: ShopSkill[] = [
-  {
-    id: 'git-commit',
-    name: 'git-commit',
-    description: '帮助创建规范的 Git 提交信息，符合 conventional commits 标准',
-    source: 'official',
-    author: 'Anthropic'
-  },
-  {
-    id: 'github-pr',
-    name: 'github-pr',
-    description: '创建和管理 GitHub Pull Request，包括审查、合并等操作',
-    source: 'official',
-    author: 'Anthropic'
-  },
-  {
-    id: 'review-pr',
-    name: 'review-pr',
-    description: '审查 GitHub Pull Request，提供代码质量建议和改进意见',
-    source: 'official',
-    author: 'Anthropic'
-  },
-  {
-    id: 'explain-code',
-    name: 'explain-code',
-    description: '解释代码的功能和实现原理，支持多种编程语言',
-    source: 'official',
-    author: 'Anthropic'
-  },
-  {
-    id: 'write-tests',
-    name: 'write-tests',
-    description: '为代码编写单元测试和集成测试，支持多种测试框架',
-    source: 'official',
-    author: 'Anthropic'
-  },
-  {
-    id: 'refactor-code',
-    name: 'refactor-code',
-    description: '重构代码以提高可读性和性能，保持功能不变',
-    source: 'official',
-    author: 'Anthropic'
-  },
-  {
-    id: 'find-bugs',
-    name: 'find-bugs',
-    description: '静态分析代码，查找潜在的 bug 和安全问题',
-    source: 'official',
-    author: 'Anthropic'
-  },
-  {
-    id: 'api-docs',
-    name: 'api-docs',
-    description: '为 API 生成规范的文档，支持 OpenAPI/Swagger 格式',
-    source: 'official',
-    author: 'Anthropic'
-  }
-];
+// 从 GitHub API 获取 Anthropic 官方 Skills
+async function fetchOfficialSkillsFromGitHub(): Promise<ShopSkill[]> {
+  return new Promise((resolve) => {
+    // 搜索 anthropics 组织下的 claude-code-skill 仓库
+    const url = 'https://api.github.com/search/repositories?q=org:anthropics+claude-code-skill&sort=updated&per_page=30';
+
+    const options = {
+      headers: {
+        'User-Agent': 'Skill-Manager-App',
+        'Accept': 'application/vnd.github.v3+json'
+      }
+    };
+
+    https.get(url, options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.items && json.items.length > 0) {
+            const skills: ShopSkill[] = json.items.map((item: any) => ({
+              id: item.id.toString(),
+              name: item.name.replace('claude-code-skill-', ''),
+              description: item.description || '暂无描述',
+              source: 'official' as const,
+              url: item.html_url,
+              author: item.owner.login,
+              stars: item.stargazers_count
+            }));
+            resolve(skills);
+            return;
+          }
+        } catch (error) {
+          console.error('解析官方 skills 失败:', error);
+        }
+        resolve([]);
+      });
+    }).on('error', (error) => {
+      console.error('获取官方 skills 失败:', error);
+      resolve([]);
+    });
+  });
+}
 
 // 存储路径（用于保存用户自定义配置）
 const userDataPath = app.getPath('userData');
@@ -305,9 +289,9 @@ function registerIpcHandlers(): void {
 
   // ===== 商店相关 IPC =====
 
-  // 获取官方推荐 Skills
-  ipcMain.handle('shop:getOfficialSkills', () => {
-    return officialSkills;
+  // 获取官方推荐 Skills（从 GitHub API）
+  ipcMain.handle('shop:getOfficialSkills', async () => {
+    return await fetchOfficialSkillsFromGitHub();
   });
 
   // 搜索 GitHub 仓库
