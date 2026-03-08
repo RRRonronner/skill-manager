@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>Skill 管理器</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>Skill 管理器</h1>
+      </div>
+      <nav class="sidebar-nav">
+        <button id="btn-all" class="nav-btn active">全部 Skills</button>
+        <button id="btn-enabled" class="nav-btn">已启用</button>
+        <button id="btn-disabled" class="nav-btn">已禁用</button>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="btn-refresh" class="action-btn">刷新数据</button>
+      </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main class="main-content">
+      <!-- 工具栏 -->
+      <header class="toolbar">
+        <div class="search-box">
+          <input type="text" id="search-input" placeholder="搜索 skills...">
+        </div>
+        <button id="btn-add" class="primary-btn">+ 新建 Skill</button>
+      </header>
+
+      <!-- 列表区域 -->
+      <div id="skills-list" class="skills-list">
+        <!-- Skills 将通过 JS 动态插入 -->
+      </div>
+
+      <!-- 空状态 -->
+      <div id="empty-state" class="empty-state hidden">
+        <p>暂无 Skills，点击上方按钮创建</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- 创建/编辑弹窗 -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modal-title">新建 Skill</h2>
+        <button id="modal-close" class="close-btn">&times;</button>
+      </div>
+      <form id="skill-form" class="skill-form">
+        <input type="hidden" id="skill-id">
+        <div class="form-group">
+          <label for="skill-name">名称</label>
+          <input type="text" id="skill-name" required placeholder="输入 skill 名称">
+        </div>
+        <div class="form-group">
+          <label for="skill-description">描述</label>
+          <textarea id="skill-description" rows="3" placeholder="输入 skill 描述"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="skill-tags">标签（逗号分隔）</label>
+          <input type="text" id="skill-tags" placeholder="如: git, 工具, 常用">
+        </div>
+        <div class="form-actions">
+          <button type="button" id="btn-cancel" class="secondary-btn">取消</button>
+          <button type="submit" class="primary-btn">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
